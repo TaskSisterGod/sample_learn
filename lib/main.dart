@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:english_words/english_words.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() => runApp(MyApp());
 
@@ -16,6 +17,16 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class Issue {
+  Issue({
+    this.title,
+    this.avatarUrl,
+  });
+
+  final String title;
+  final String avatarUrl;
+}
+
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
 
@@ -26,11 +37,26 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  List<Issue> _issues = <Issue>[];
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final res = await http.get('https://api.github.com/repositories/31792824/issues');
+    final data = json.decode(res.body);
     setState(() {
-      _counter++;
+      final issues = data as List;
+      issues.forEach((dynamic element) {
+        final issue = element as Map;
+        _issues.add(Issue(
+          title: issue['title'] as String,
+          avatarUrl: issue['user']['avatar_url'] as String,
+        ));
+      });
     });
   }
 
@@ -40,24 +66,20 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
+      body: ListView.builder(
+        itemBuilder: (BuildContext context, int index) {
+          if (index >= _issues.length) {
+            return null;
+          }
+
+          final issue = _issues[index];
+          return ListTile(
+            leading: ClipOval(
+              child: Image.network(issue.avatarUrl),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
+            title: Text(issue.title),
+          );
+        },
       ),
     );
   }
