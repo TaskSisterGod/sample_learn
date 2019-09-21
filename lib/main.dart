@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:english_words/english_words.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() => runApp(MyApp());
 
@@ -7,51 +8,79 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context){
     return MaterialApp(
-      title: 'StartUp Name Generator',
-      home: RandomWords(),
+      title: 'Flutter Issues',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: MyHomePage(title: 'Flutter Issues'),
     );
   }
 }
 
-class RandomWordsState extends State<RandomWords> {
-  final _suggestions = <WordPair>[];
-  final _biggerFont = const TextStyle(fontSize: 18.0);
+class Issue {
+  Issue({
+    this.title,
+    this.avatarUrl,
+  });
+
+  final String title;
+  final String avatarUrl;
+}
+
+class MyHomePage extends StatefulWidget {
+  MyHomePage({Key key, this.title}) : super(key: key);
+
+  final String title;
+
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  List<Issue> _issues = <Issue>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final res = await http.get('https://api.github.com/repositories/31792824/issues');
+    final data = json.decode(res.body);
+    setState(() {
+      final issues = data as List;
+      issues.forEach((dynamic element) {
+        final issue = element as Map;
+        _issues.add(Issue(
+          title: issue['title'] as String,
+          avatarUrl: issue['user']['avatar_url'] as String,
+        ));
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Startup Name Generator'),
+        title: Text(widget.title),
       ),
-      body: _buildSuggestions(),
-    );
-  }
+      body: ListView.builder(
+        itemBuilder: (BuildContext context, int index) {
+          if (index >= _issues.length) {
+            return null;
+          }
 
-  Widget _buildSuggestions() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemBuilder: /*1*/ (context, i) {
-        if (i.isOdd) return Divider(); /*2*/
-
-        final index = i ~/ 2; /*3*/
-        if (index >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(10)); /*4*/
-        }
-        return _buildRow(_suggestions[index]);
-      });
-  }
-
-  Widget _buildRow(WordPair pair) {
-    return ListTile(
-      title: Text(
-        pair.asPascalCase,
-        style: _biggerFont,
+          final issue = _issues[index];
+          return ListTile(
+            leading: ClipOval(
+              child: Image.network(issue.avatarUrl),
+            ),
+            title: Text(issue.title),
+          );
+        },
       ),
     );
   }
-}
-
-class RandomWords extends StatefulWidget {
-  @override
-  RandomWordsState createState() => RandomWordsState();
 }
